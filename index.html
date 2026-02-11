@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CATSHOT - MAIN MENU</title>
+    <style>
+        /* 8-bit / Pixel Perfect стили */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            cursor: crosshair;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            color: #0f0;
+        }
+
+        /* CRT Эффекты */
+        #scanlines {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 16, 0, 0.1) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.2;
+        }
+
+        #crt-effect {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(0, 16, 0, 0.2) 0%,
+                rgba(0, 0, 0, 0.9) 100%
+            );
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* Анимированный фон */
+        #background {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        #bg-pixel {
+            position: absolute;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: cover;
+            image-rendering: pixelated;
+            opacity: 0.7;
+            animation: subtleZoom 20s infinite alternate;
+        }
+
+        @keyframes subtleZoom {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+
+        /* Темный оверлей для читаемости */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1;
+        }
+
+        /* Главное меню */
+        #menu-container {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            max-width: 90vw;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Логотип в 8-bit стиле */
+        #logo {
+            width: 100%;
+            margin-bottom: 40px;
+            image-rendering: pixelated;
+            filter: drop-shadow(8px 8px 0 #030);
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 100% { transform: skew(0deg, 0deg); opacity: 1; }
+            95% { transform: skew(2deg, 1deg); opacity: 0.9; }
+            96% { transform: skew(-2deg, -1deg); }
+            97% { transform: skew(1deg, 0deg); }
+        }
+
+        /* ASCII Art версия логотипа на случай отсутствия изображения */
+        #logo-ascii {
+            display: none;
+            font-size: 12px;
+            line-height: 1.4;
+            text-align: center;
+            color: #0f0;
+            text-shadow: 4px 4px 0 #030;
+            letter-spacing: 2px;
+            white-space: pre;
+            margin: 20px 0;
+        }
+
+        /* Кнопки меню */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 400px;
+            max-width: 80vw;
+        }
+
+        .menu-btn {
+            position: relative;
+            padding: 20px 30px;
+            font-size: 20px;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            border: 4px solid #0f0;
+            cursor: pointer;
+            image-rendering: pixelated;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            box-shadow: 8px 8px 0 #030;
+            transition: all 0.1s;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .menu-btn:hover {
+            transform: translate(4px, 4px);
+            box-shadow: 4px 4px 0 #030;
+            background: #030;
+        }
+
+        .menu-btn:active {
+            transform: translate(8px, 8px);
+            box-shadow: 0 0 0 #030;
+        }
+
+        /* Специальные стили для кнопок */
+        .btn-new-game { border-color: #0f0; }
+        .btn-continue { border-color: #0f0; opacity: 0.8; }
+        .btn-howto { border-color: #0f0; }
+        .btn-exit { border-color: #f00; color: #f00; box-shadow: 8px 8px 0 #300; }
+
+        .btn-exit:hover {
+            background: #300;
+            border-color: #f00;
+        }
+
+        /* Информационная панель */
+        #info-panel {
+            margin-top: 60px;
+            background: #000;
+            border: 4px solid #0f0;
+            padding: 20px 30px;
+            width: 600px;
+            max-width: 80vw;
+            box-shadow: 8px 8px 0 #030;
+            font-size: 12px;
+            line-height: 1.8;
+            color: #0f0;
+            text-transform: uppercase;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 5px;
+        }
+
+        .info-label {
+            color: #0a0;
+        }
+
+        .info-value {
+            color: #0f0;
+        }
+
+        /* Версия и копирайт */
+        #footer {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #0a0;
+            font-size: 10px;
+            z-index: 30;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 2px;
+        }
+
+        /* Модальное окно How to Play */
+        #howto-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            image-rendering: pixelated;
+        }
+
+        .modal-content {
+            background: #000;
+            border: 6px solid #0f0;
+            padding: 40px;
+            max-width: 600px;
+            width: 80vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 12px 12px 0 #030;
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #0f0;
+            text-shadow: 4px 4px 0 #030;
+            letter-spacing: 4px;
+        }
+
+        .modal-text {
+            font-size: 12px;
+            line-height: 2;
+            color: #0f0;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: #0f0;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .close-btn:hover {
+            color: #f00;
+        }
+
+        /* Pixel декорации */
+        .pixel-corner {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #0f0;
+            opacity: 0.3;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .menu-btn { font-size: 16px; padding: 15px 20px; }
+            .modal-title { font-size: 18px; }
+            .modal-text { font-size: 10px; }
+            #info-panel { font-size: 10px; }
+        }
+
+        /* Стилизация скроллбара */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: #000;
+            border: 2px solid #0f0;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #0f0;
+            border: 2px solid #030;
+        }
+
+        /* Анимация мигания курсора */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: #0f0;
+            animation: blink 1s infinite;
+            margin-left: 5px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- CRT Эффекты -->
+    <div id="scanlines"></div>
+    <div id="crt-effect"></div>
+
+    <!-- Фон с пиксельным изображением -->
+    <div id="background">
+        <img id="bg-pixel" src="Background.png" alt="background" onerror="this.style.display='none'; document.body.style.background='#000';">
+    </div>
+    <div id="overlay"></div>
+
+    <!-- Главное меню -->
+    <div id="menu-container">
+        <!-- Логотип игры -->
+        <img id="logo" src="CATSHOT_logo.png" alt="CATSHOT" onerror="handleLogoError()">
+        <pre id="logo-ascii">
+  ██████ ▄▄▄█████▓ ██████  ██░ ██  ▒█████  ▄▄▄█████▓
+▒██    ▒ ▓  ██▒ ▓▒▒██    ▒ ▓██░ ██▒▒██▒  ██▒▓  ██▒ ▓▒
+░ ▓██▄   ▒ ▓██░ ▒░░ ▓██▄   ▒██▀▀██░▒██░  ██▒▒ ▓██░ ▒░
+  ▒   ██▒░ ▓██▓ ░   ▒   ██▒░▓█ ░██ ▒██   ██░░ ▓██▓ ░ 
+▒██████▒▒  ▒██▒ ░ ▒██████▒▒░▓█▒░██▓░ ████▓▒░  ▒██▒ ░ 
+▒ ▒▓▒ ▒ ░  ▒ ░░   ▒ ▒▓▒ ▒ ░ ▒ ░░▒░▒░ ▒░▒░▒░   ▒ ░░   
+░ ░▒  ░ ░    ░    ░ ░▒  ░ ░ ▒ ░▒░ ░  ░ ▒ ▒░     ░    
+░  ░  ░    ░      ░  ░  ░   ░  ░░ ░░ ░ ░ ▒    ░      
+      ░                 ░   ░  ░  ░    ░ ░           
+        </pre>
+
+        <!-- Кнопки меню -->
+        <div class="menu-buttons">
+            <a href="game.html" class="menu-btn btn-new-game">▶ NEW GAME</a>
+            <button class="menu-btn btn-continue" onclick="showMessage('NO SAVE FILE')">⏵ CONTINUE</button>
+            <button class="menu-btn btn-howto" onclick="showHowTo()">? HOW TO PLAY</button>
+            <button class="menu-btn btn-exit" onclick="exitGame()">✕ EXIT</button>
+        </div>
+
+        <!-- Информационная панель -->
+        <div id="info-panel">
+            <div class="info-row">
+                <span class="info-label">VERSION</span>
+                <span class="info-value">1.0.8-BIT</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">LAST PLAYED</span>
+                <span class="info-value" id="last-played">NEVER</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">TOTAL DEATHS</span>
+                <span class="info-value" id="total-deaths">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">HARDCORE CLEARS</span>
+                <span class="info-value" id="hardcore-clears">0</span>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <span id="ready-indicator">SYSTEM READY</span>
+                <span class="cursor"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Нижний колонтитул -->
+    <div id="footer">
+        Ⓒ 2024 CATSHOT • PIXEL DEATH • ALL RIGHTS RESERVED
+    </div>
+
+    <!-- Модальное окно How to Play -->
+    <div id="howto-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeHowTo()">&times;</button>
+            <div class="modal-title">📖 HOW TO PLAY</div>
+            <div class="modal-text">
+                <p style="font-size: 14px; margin-bottom: 20px;">🎮 ROULETTE DUEL</p>
+                
+                <p>▶ <span style="color:#0f0">NORMAL MODE</span><br>
+                &nbsp;&nbsp;3 Lives • 3 Live / 3 Blank rounds<br>
+                &nbsp;&nbsp;Balanced difficulty • Enemy shoots 80%</p>
+                
+                <p>▶ <span style="color:#f00">HARD MODE</span><br>
+                &nbsp;&nbsp;3 Lives • 2 Live / 1 Blank rounds<br>
+                &nbsp;&nbsp;Extreme • Enemy shoots 90% • Hit chance 70%</p>
+                
+                <p>▶ <span style="color:#0f0">CONTROLS</span><br>
+                &nbsp;&nbsp;MOUSE - Aim the paw<br>
+                &nbsp;&nbsp;SHOOT - Fire current round<br>
+                &nbsp;&nbsp;RELOAD - Replace ammo (50/50 chance)</p>
+                
+                <p>▶ <span style="color:#0f0">MECHANICS</span><br>
+                &nbsp;&nbsp;• Blank = Safe, continues turn<br>
+                &nbsp;&nbsp;• Live = Damages opponent<br>
+                &nbsp;&nbsp;• Consecutive blanks increase risk in Hard mode<br>
+                &nbsp;&nbsp;• Difficulty rises each round</p>
+                
+                <p style="margin-top: 30px; border-top: 2px solid #0f0; padding-top: 20px;">
+                ⚡ PRO TIP: Reload when you suspect a Live round!<br>
+                ⚡ Blood on Snowy shows remaining health</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Обработка ошибок загрузки логотипа
+        function handleLogoError() {
+            document.getElementById('logo').style.display = 'none';
+            document.getElementById('logo-ascii').style.display = 'block';
+        }
+
+        // Показать сообщение (для Continue)
+        function showMessage(msg) {
+            // Создаем временное 8-bit уведомление
+            const notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.top = '50%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.background = '#000';
+            notification.style.color = '#0f0';
+            notification.style.padding = '30px 50px';
+            notification.style.border = '4px solid #0f0';
+            notification.style.zIndex = '200';
+            notification.style.fontFamily = "'Press Start 2P', monospace";
+            notification.style.fontSize = '16px';
+            notification.style.boxShadow = '8px 8px 0 #030';
+            notification.style.textTransform = 'uppercase';
+            notification.style.letterSpacing = '2px';
+            notification.textContent = msg;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 1500);
+        }
+
+        // Показать окно How to Play
+        function showHowTo() {
+            document.getElementById('howto-modal').style.display = 'flex';
+        }
+
+        function closeHowTo() {
+            document.getElementById('howto-modal').style.display = 'none';
+        }
+
+        // Выход из игры (для браузера)
+        function exitGame() {
+            if (confirm('⚠️ EXIT GAME?\nAll unsaved progress will be lost.')) {
+                // Пробуем закрыть окно
+                if (navigator.userAgent.includes("Firefox")) {
+                    alert('Press Alt+F4 to exit');
+                } else {
+                    window.close();
+                }
+            }
+        }
+
+        // Загрузка статистики из localStorage
+        function loadStats() {
+            const deaths = localStorage.getItem('catshot_deaths') || '0';
+            const clears = localStorage.getItem('catshot_hard_clears') || '0';
+            const lastPlayed = localStorage.getItem('catshot_last_played') || 'NEVER';
+            
+            document.getElementById('total-deaths').textContent = deaths;
+            document.getElementById('hardcore-clears').textContent = clears;
+            document.getElementById('last-played').textContent = lastPlayed;
+        }
+
+        // Сохранение времени последнего визита
+        function saveLastPlayed() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                month: '2-digit', 
+                day: '2-digit', 
+                year: '2-digit' 
+            });
+            localStorage.setItem('catshot_last_played', dateStr);
+        }
+
+        // Эффект печатающегося текста для READY
+        function typeWriterEffect() {
+            const element = document.getElementById('ready-indicator');
+            const text = 'SYSTEM READY';
+            element.textContent = '';
+            
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, 100);
+                }
+            }
+            type();
+        }
+
+        // Добавляем пикселизацию для всех изображений
+        document.addEventListener('DOMContentLoaded', function() {
+            // Устанавливаем пиксельную рендеринг
+            const allImages = document.querySelectorAll('img');
+            allImages.forEach(img => {
+                img.style.imageRendering = 'pixelated';
+                img.style.imageRendering = 'crisp-edges';
+            });
+            
+            // Загружаем статистику
+            loadStats();
+            saveLastPlayed();
+            
+            // Запускаем эффект печати
+            typeWriterEffect();
+            
+            // Обработка клавиши ESC для закрытия модального окна
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeHowTo();
+                }
+            });
+            
+            // Клик вне модального окна для закрытия
+            document.getElementById('howto-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeHowTo();
+                }
+            });
+        });
+
+        // Создаем заглушки для отсутствующих изображений
+        window.addEventListener('load', function() {
+            // Если фоновое изображение не загрузилось
+            const bgImg = document.getElementById('bg-pixel');
+            bgImg.onerror = function() {
+                this.style.display = 'none';
+                // Создаем пиксельный паттерн
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, 64, 64);
+                ctx.fillStyle = '#030';
+                for (let i = 0; i < 64; i+=8) {
+                    for (let j = 0; j < 64; j+=8) {
+                        if ((i + j) % 16 === 0) {
+                            ctx.fillRect(i, j, 4, 4);
+                        }
+                    }
+                }
+                this.src = canvas.toDataURL();
+            };
+        });
+    </script>
+</body>
+</html>
