@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>CAT.EXE - 8-bit Russian Roulette</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+        cursor: crosshair;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+    }
+
+    /* Контейнер для центрирования фона */
+    #bg-container {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 0;
+        overflow: hidden;
+    }
+
+    /* Background layers - НЕ РАСТЯГИВАЕТСЯ */
+    .bg-layer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Сохраняет пропорции */
+        image-rendering: pixelated;
+        display: none;
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    #bg-layer-3 { display: block; } /* Default - 3 lives */
+
+    /* Контейнер для Snowy и верхних слоев */
+    #snowy-container {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 100vh;
+        height: 100vh;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    /* Snowy - ВИДЕН ВСЕГДА */
+    #snowy {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        pointer-events: none;
+        transition: all 0.3s;
+        filter: drop-shadow(0 0 4px #00ff00);
+        display: block !important;
+    }
+
+    /* Upper blood layers - ВЫШЕ Snowy, НИЖЕ интерфейса */
+    .upper-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        pointer-events: none;
+        z-index: 2; /* Между Snowy и интерфейсом */
+        display: none;
+    }
+
+    /* Paw */
+    #paw {
+        position: fixed;
+        right: 40px;
+        bottom: 40px;
+        width: 256px;
+        height: 280px;
+        transform-origin: center bottom;
+        image-rendering: pixelated;
+        pointer-events: none;
+        z-index: 4;
+        transition: opacity 0.3s;
+    }
+
+    /* Gun */
+    #gun {
+        position: fixed;
+        left: 40px;
+        bottom: 40px;
+        width: 200px;
+        height: auto;
+        image-rendering: pixelated;
+        pointer-events: none;
+        z-index: 3;
+    }
+
+    /* Кнопки в 8-bit стиле */
+    #controls {
+        position: fixed;
+        left: 50%;
+        bottom: 40px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 20px;
+        z-index: 100; /* ВЫШЕ всех */
+    }
+
+    .control-btn {
+        padding: 15px 30px;
+        font-size: 20px;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
+        background: #000;
+        color: #0f0;
+        border: 3px solid #0f0;
+        cursor: pointer;
+        image-rendering: pixelated;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        box-shadow: 4px 4px 0 #030;
+        transition: all 0.1s;
+    }
+
+    .control-btn:hover {
+        transform: translate(2px, 2px);
+        box-shadow: 2px 2px 0 #030;
+    }
+
+    .control-btn:active {
+        transform: translate(4px, 4px);
+        box-shadow: 0 0 0 #030;
+    }
+
+    .control-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 4px 4px 0 #030;
+    }
+
+    /* Счетчики жизней в 8-bit */
+    #lifes {
+        position: fixed;
+        top: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 40px;
+        z-index: 100; /* ВЫШЕ всех */
+        font-family: 'Press Start 2P', 'Courier New', monospace;
+        font-size: 20px;
+        color: #0f0;
+        text-shadow: 2px 2px 0 #000;
+    }
+
+    #player-lifes, #snowy-lifes {
+        background: #000;
+        padding: 15px 30px;
+        border: 3px solid #0f0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 4px 4px 0 #030;
+    }
+
+    /* Режим игры в 8-bit */
+    #mode-panel {
+        position: fixed;
+        left: 40px;
+        top: 150px;
+        background: #000;
+        padding: 15px;
+        border: 2px solid #0f0;
+        color: #0f0;
+        z-index: 100; /* ВЫШЕ всех */
+        min-width: 160px;
+        box-shadow: 4px 4px 0 #030;
+    }
+
+    #mode-panel h3 {
+        margin: 0 0 10px 0;
+        text-align: center;
+        font-size: 12px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #0f0;
+        padding-bottom: 8px;
+    }
+
+    #mode-selector {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .mode-btn {
+        padding: 6px;
+        font-size: 10px;
+        background: #111;
+        border: 2px solid #030;
+        color: #0f0;
+        cursor: pointer;
+        transition: all 0.1s;
+        text-align: center;
+    }
+
+    .mode-btn:hover {
+        background: #222;
+        border-color: #0f0;
+    }
+
+    .mode-btn.active {
+        background: #030;
+        border-color: #0f0;
+        color: #0f0;
+    }
+
+    #mode-description {
+        margin-top: 8px;
+        font-size: 8px;
+        color: #0a0;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    /* Сообщение о перезарядке в 8-bit */
+    #reload-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #000;
+        color: #0f0;
+        padding: 30px;
+        border: 4px solid #0f0;
+        z-index: 1001; /* ВЫШЕ интерфейса */
+        font-size: 28px;
+        text-align: center;
+        display: none;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        box-shadow: 8px 8px 0 #030;
+        min-width: 350px;
+    }
+
+    /* Эффекты в 8-bit */
+    .damage-effect {
+        position: fixed;
+        inset: 0;
+        background: #0f0;
+        z-index: 99; /* НИЖЕ интерфейса, ВЫШЕ всего остального */
+        pointer-events: none;
+        opacity: 0;
+        animation: damageFlash 0.3s steps(2);
+    }
+
+    @keyframes damageFlash {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 0.4; }
+    }
+
+    /* Сообщения в 8-bit */
+    #message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #000;
+        color: #0f0;
+        padding: 30px 60px;
+        border: 4px solid #0f0;
+        z-index: 1000; /* ВЫШЕ интерфейса */
+        font-size: 32px;
+        text-align: center;
+        display: none;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        box-shadow: 8px 8px 0 #030;
+        animation: messageBlink 0.5s steps(2) infinite;
+    }
+
+    @keyframes messageBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    /* Полноэкранные изображения лапы */
+    .fullscreen-paw {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        image-rendering: pixelated;
+        pointer-events: none;
+        z-index: 5; /* Между верхними слоями и интерфейсом */
+        opacity: 0;
+        transition: opacity 0.3s;
+        background: transparent !important;
+    }
+
+    /* Экран конца игры в 8-bit */
+    #game-over {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000; /* САМЫЙ ВЫСОКИЙ */
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: #0f0;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
+        image-rendering: pixelated;
+    }
+
+    #game-over h1 {
+        font-size: 48px;
+        margin: 0 0 30px 0;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        color: #0f0;
+        text-shadow: 4px 4px 0 #030;
+        animation: gameOverBlink 0.6s steps(2) infinite;
+    }
+
+    @keyframes gameOverBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    #game-over p {
+        font-size: 16px;
+        margin: 10px 0;
+        color: #0f0;
+        text-align: center;
+        line-height: 1.5;
+    }
+
+    #restart-btn {
+        margin-top: 30px;
+        padding: 15px 40px;
+        font-size: 16px;
+        background: #000;
+        color: #0f0;
+        border: 4px solid #0f0;
+        cursor: pointer;
+        transition: all 0.1s;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        box-shadow: 6px 6px 0 #030;
+        font-family: 'Press Start 2P', 'Courier New', monospace;
+    }
+
+    #restart-btn:hover {
+        transform: translate(2px, 2px);
+        box-shadow: 4px 4px 0 #030;
+    }
+
+    /* Сканирующие линии (CRT эффект) */
+    #scanlines {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(
+            to bottom,
+            transparent 50%,
+            rgba(0, 16, 0, 0.1) 50%
+        );
+        background-size: 100% 4px;
+        z-index: 101; /* Выше интерфейса */
+        pointer-events: none;
+        opacity: 0.3;
+    }
+
+    /* Эффект старого монитора */
+    #crt-effect {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(
+            ellipse at center,
+            rgba(0, 16, 0, 0.2) 0%,
+            rgba(0, 0, 0, 0.8) 100%
+        );
+        z-index: 100; /* На уровне интерфейса */
+        pointer-events: none;
+        opacity: 0.6;
+    }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Контейнер для центрированного фона -->
+<div id="bg-container">
+    <!-- Background layers - СИСТЕМА КРОВИ -->
+    <img id="bg-layer-3" class="bg-layer" src="Background.png"> <!-- 3 жизни -->
+    <img id="bg-layer-2" class="bg-layer" src="Background_blood1.png"> <!-- 2 жизни -->
+    <img id="bg-layer-1" class="bg-layer" src="Background_blood2.png"> <!-- 1 жизнь -->
+    <img id="bg-layer-0" class="bg-layer" src="Background_blood3.png"> <!-- 0 жизней -->
+</div>
+
+<!-- CRT эффекты -->
+<div id="scanlines"></div>
+<div id="crt-effect"></div>
+
+<!-- Контейнер для Snowy и верхних слоев -->
+<div id="snowy-container">
+    <!-- Snowy - ОСТАЕТСЯ ВИДИМЫМ -->
+    <img id="snowy" src="snowy.png">
+
+    <!-- Upper blood layers - ВЫШЕ Snowy, НИЖЕ интерфейса -->
+    <img id="upper-layer-2" class="upper-layer" src="blood1_upper_layer.png"> <!-- 2 жизни -->
+    <img id="upper-layer-1" class="upper-layer" src="blood2_upper_layer.png"> <!-- 1 жизнь -->
+    <img id="upper-layer-0" class="upper-layer" src="blood3_upper_layer.png"> <!-- 0 жизней -->
+</div>
+
+<!-- Основная лапа -->
+<img id="paw" src="Player_Paw.png">
+
+<!-- Полноэкранные изображения лапы с ПРОЗРАЧНЫМ фоном -->
+<img id="paw-holding" class="fullscreen-paw" src="player_paw_holding_gun.png" style="display: none;">
+<img id="paw-shooting" class="fullscreen-paw" src="player_paw_shooting_gun.png" style="display: none;">
+
+<!-- Оружие -->
+<img id="gun" src="gun.png">
+
+<!-- Эффекты -->
+<div id="damage-effect" class="damage-effect"></div>
+
+<!-- Сообщение о перезарядке -->
+<div id="reload-message">
+    <div id="reload-text"></div>
+    <div style="font-size: 14px; margin-top: 15px; color: #0a0;">
+        NEW ROUND LOADED
+    </div>
+</div>
+
+<!-- Интерфейс -->
+<div id="controls">
+    <button id="shoot-btn" class="control-btn">SHOOT</button>
+    <button id="reload-btn" class="control-btn">RELOAD</button>
+</div>
+
+<div id="lifes">
+    <div id="player-lifes">🐱 PLAYER: <span id="player-hearts">🐱🐱🐱</span></div>
+    <div id="snowy-lifes">🐱 SNOWY: <span id="snowy-hearts">🐱🐱🐱</span></div>
+</div>
+
+<!-- Панель режима игры -->
+<div id="mode-panel">
+    <h3>🎮 MODE</h3>
+    <div id="mode-selector">
+        <button id="normal-mode-btn" class="mode-btn active">NORMAL</button>
+        <button id="hard-mode-btn" class="mode-btn">HARD</button>
+    </div>
+    <div id="mode-description">
+        NORMAL: BALANCED<br>
+        HARD: EXTREME
+    </div>
+</div>
+
+<div id="message"></div>
+
+<div id="game-over">
+    <h1 id="game-title">GAME OVER</h1>
+    <p id="game-result"></p>
+    <p id="game-stats"></p>
+    <button id="restart-btn">RESTART</button>
+</div>
+
+<script>
+// Элементы DOM
+const paw = document.getElementById("paw");
+const pawHolding = document.getElementById("paw-holding");
+const pawShooting = document.getElementById("paw-shooting");
+const snowy = document.getElementById("snowy");
+const controls = document.getElementById("controls");
+const shootBtn = document.getElementById("shoot-btn");
+const reloadBtn = document.getElementById("reload-btn");
+const damageEffect = document.getElementById("damage-effect");
+const message = document.getElementById("message");
+const reloadMessage = document.getElementById("reload-message");
+const reloadText = document.getElementById("reload-text");
+const gameOverScreen = document.getElementById("game-over");
+const gameTitle = document.getElementById("game-title");
+const gameResult = document.getElementById("game-result");
+const gameStats = document.getElementById("game-stats");
+const restartBtn = document.getElementById("restart-btn");
+const normalModeBtn = document.getElementById("normal-mode-btn");
+const hardModeBtn = document.getElementById("hard-mode-btn");
+const modeDescription = document.getElementById("mode-description");
+
+// Элементы статистики
+const playerHearts = document.getElementById("player-hearts");
+const snowyHearts = document.getElementById("snowy-hearts");
+
+// Background и upper layer элементы
+const bgLayers = {
+    3: document.getElementById("bg-layer-3"),
+    2: document.getElementById("bg-layer-2"),
+    1: document.getElementById("bg-layer-1"),
+    0: document.getElementById("bg-layer-0")
+};
+
+const upperLayers = {
+    2: document.getElementById("upper-layer-2"),
+    1: document.getElementById("upper-layer-1"),
+    0: document.getElementById("upper-layer-0")
+};
+
+// Конфигурации режимов
+const configs = {
+    normal: {
+        initialLives: 3,
+        initialLiveAmmo: 3,
+        initialBlankAmmo: 3,
+        maxChamberCapacity: 6,
+        enemyShootChance: 0.8,
+        enemyHitChance: 0.5,
+        difficultyIncrement: 0.02,
+        maxDifficulty: 0.8,
+        description: "NORMAL: BALANCED"
+    },
+    hard: {
+        initialLives: 3,
+        initialLiveAmmo: 2,
+        initialBlankAmmo: 1,
+        maxChamberCapacity: 3,
+        enemyShootChance: 0.9,
+        enemyHitChance: 0.7,
+        difficultyIncrement: 0.05,
+        maxDifficulty: 0.95,
+        description: "HARD: EXTREME"
+    }
+};
+
+// Игровое состояние
+let currentMode = 'normal';
+let config = configs.normal;
+let gameState = null;
+
+// Обновить визуальные слои в зависимости от жизней Snowy
+function updateBloodLayers() {
+    if (!gameState) return;
+    
+    // Скрыть все слои
+    Object.values(bgLayers).forEach(layer => {
+        if (layer) layer.style.display = 'none';
+    });
+    Object.values(upperLayers).forEach(layer => {
+        if (layer) layer.style.display = 'none';
+    });
+    
+    // Показать соответствующие слои в зависимости от жизней
+    const snowyLives = gameState.snowyLives;
+    
+    // Фоновые слои (background)
+    if (snowyLives >= 3) {
+        // 3+ жизни - обычный фон
+        bgLayers[3].style.display = 'block';
+    } else if (snowyLives === 2) {
+        // 2 жизни - первый уровень крови
+        bgLayers[2].style.display = 'block';
+    } else if (snowyLives === 1) {
+        // 1 жизнь - второй уровень крови
+        bgLayers[1].style.display = 'block';
+    } else if (snowyLives <= 0) {
+        // 0 жизней - максимальный уровень крови
+        bgLayers[0].style.display = 'block';
+    }
+    
+    // Верхние слои (upper layers) - ПОКАЗЫВАЮТСЯ ПОВЕРХ Snowy
+    if (snowyLives === 2) {
+        // 2 жизни - первый уровень крови сверху
+        upperLayers[2].style.display = 'block';
+    } else if (snowyLives === 1) {
+        // 1 жизнь - второй уровень крови сверху
+        upperLayers[1].style.display = 'block';
+    } else if (snowyLives <= 0) {
+        // 0 жизней - максимальный уровень крови сверху
+        upperLayers[0].style.display = 'block';
+    }
+    // При 3+ жизнях верхние слои не показываются
+}
+
+// Инициализация игры
+function initGame() {
+    config = configs[currentMode];
+    
+    gameState = {
+        playerLives: config.initialLives,
+        snowyLives: config.initialLives,
+        liveAmmo: config.initialLiveAmmo,
+        blankAmmo: config.initialBlankAmmo,
+        chamber: [],
+        currentAmmo: null,
+        isPlayerTurn: true,
+        gameActive: true,
+        round: 1,
+        playerShots: 0,
+        snowyShots: 0,
+        consecutiveBlanks: 0,
+        difficultyMultiplier: 1.0
+    };
+
+    modeDescription.innerHTML = config.description;
+    
+    createAmmoPool();
+    loadChamber();
+    
+    updateUI();
+    updateBloodLayers(); // Обновляем слои крови
+    restoreMainPaw();
+    
+    snowy.src = "snowy.png";
+    snowy.style.display = 'block';
+    snowy.style.opacity = '1';
+    
+    showControls();
+    
+    reloadMessage.style.display = 'none';
+    message.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    
+    showMessage("YOUR TURN!", 1500);
+}
+
+// Создаем пул патронов
+function createAmmoPool() {
+    gameState.chamber = [];
+    
+    for (let i = 0; i < gameState.liveAmmo; i++) {
+        gameState.chamber.push(2);
+    }
+    
+    for (let i = 0; i < gameState.blankAmmo; i++) {
+        gameState.chamber.push(1);
+    }
+    
+    shuffleArray(gameState.chamber);
+}
+
+// Загружаем патрон в патронник
+function loadChamber() {
+    if (gameState.chamber.length > 0) {
+        gameState.currentAmmo = gameState.chamber.shift();
+    }
+}
+
+// Берем следующий патрон
+function nextAmmo() {
+    if (gameState.chamber.length === 0) {
+        createAmmoPool();
+    }
+    loadChamber();
+}
+
+// Показать сообщение о перезарядке
+function showReloadMessage(oldAmmo) {
+    const oldType = oldAmmo === 1 ? "BLANK" : "LIVE";
+    const oldColor = "#0f0";
+    
+    reloadText.innerHTML = `REPLACED: <span style="color:${oldColor}">${oldType}</span>`;
+    reloadMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        reloadMessage.style.display = 'none';
+    }, 1500);
+}
+
+// Увеличиваем сложность
+function increaseDifficulty() {
+    gameState.difficultyMultiplier = Math.min(
+        config.maxDifficulty, 
+        1.0 + (gameState.round * config.difficultyIncrement)
+    );
+}
+
+// Обновляем интерфейс
+function updateUI() {
+    playerHearts.innerHTML = '🐱'.repeat(gameState.playerLives);
+    snowyHearts.innerHTML = '🐱'.repeat(gameState.snowyLives);
+}
+
+// Движение мыши
+document.addEventListener("mousemove", e => {
+    if (!gameState || !gameState.isPlayerTurn || !gameState.gameActive) return;
+    
+    const startX = window.innerWidth - 40 - 128;
+    const startY = window.innerHeight - 40;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    paw.style.height = Math.min(Math.max(distance, 280), 840) + "px";
+    paw.style.transform = `rotate(${angle + 90}deg)`;
+});
+
+// Управление режимами игры
+normalModeBtn.addEventListener('click', () => {
+    if (currentMode === 'normal') return;
+    
+    currentMode = 'normal';
+    normalModeBtn.classList.add('active');
+    hardModeBtn.classList.remove('active');
+    config = configs.normal;
+    initGame();
+});
+
+hardModeBtn.addEventListener('click', () => {
+    if (currentMode === 'hard') return;
+    
+    currentMode = 'hard';
+    hardModeBtn.classList.add('active');
+    normalModeBtn.classList.remove('active');
+    config = configs.hard;
+    initGame();
+});
+
+// Функции управления интерфейсом
+function hideControls() {
+    controls.style.display = 'none';
+}
+
+function showControls() {
+    controls.style.display = 'flex';
+}
+
+function showFullscreenPaw(imageElement) {
+    paw.style.opacity = '0';
+    imageElement.style.display = 'block';
+    setTimeout(() => imageElement.style.opacity = '1', 10);
+}
+
+function hideAllFullscreenPaws() {
+    [pawHolding, pawShooting].forEach(img => {
+        img.style.opacity = '0';
+        setTimeout(() => img.style.display = 'none', 200);
+    });
+}
+
+function restoreMainPaw() {
+    hideAllFullscreenPaws();
+    paw.style.opacity = '1';
+}
+
+function showMessage(text, duration = 1000) {
+    message.textContent = text;
+    message.style.display = 'block';
+    
+    setTimeout(() => message.style.display = 'none', duration);
+}
+
+function flashDamage() {
+    damageEffect.style.animation = 'none';
+    void damageEffect.offsetWidth;
+    damageEffect.style.animation = 'damageFlash 0.3s steps(2)';
+}
+
+// Выстрел игрока
+shootBtn.addEventListener('click', () => {
+    if (!gameState || !gameState.isPlayerTurn || !gameState.gameActive) return;
+    
+    hideControls();
+    gameState.playerShots++;
+    
+    setTimeout(() => {
+        showFullscreenPaw(pawHolding);
+        
+        setTimeout(() => {
+            if (gameState.currentAmmo === 1) {
+                // Холостой патрон
+                showMessage("BLANK!", 800);
+                pawHolding.style.opacity = '0';
+                
+                gameState.consecutiveBlanks++;
+                gameState.blankAmmo--;
+                
+                setTimeout(() => {
+                    nextAmmo();
+                    enemyTurn();
+                }, 800);
+                
+            } else {
+                // Боевой патрон
+                pawHolding.style.opacity = '0';
+                pawShooting.style.display = 'block';
+                setTimeout(() => pawShooting.style.opacity = '1', 10);
+                
+                // Эффект повреждения
+                flashDamage();
+                snowy.style.filter = 'brightness(1.8)';
+                
+                // Урон
+                gameState.snowyLives--;
+                gameState.liveAmmo--;
+                gameState.consecutiveBlanks = 0;
+                
+                // Обновляем слои крови после получения урона
+                updateBloodLayers();
+                
+                showMessage("HIT!", 800);
+                
+                setTimeout(() => {
+                    snowy.style.filter = '';
+                    if (gameState.snowyLives <= 0) {
+                        gameOver("player");
+                        return;
+                    }
+                    
+                    nextAmmo();
+                    enemyTurn();
+                }, 1200);
+            }
+            updateUI();
+        }, 600);
+    }, 200);
+});
+
+// Перезарядка
+reloadBtn.addEventListener('click', () => {
+    if (!gameState || !gameState.isPlayerTurn || !gameState.gameActive) return;
+    
+    hideControls();
+    
+    const oldAmmo = gameState.currentAmmo;
+    const newAmmo = Math.random() < 0.5 ? 1 : 2;
+    
+    gameState.currentAmmo = newAmmo;
+    
+    if (oldAmmo === 1) {
+        gameState.blankAmmo--;
+    } else {
+        gameState.liveAmmo--;
+    }
+    
+    if (newAmmo === 1) {
+        gameState.blankAmmo++;
+    } else {
+        gameState.liveAmmo++;
+    }
+    
+    showReloadMessage(oldAmmo);
+    updateUI();
+    
+    setTimeout(() => {
+        showControls();
+    }, 1500);
+});
+
+// Ход противника
+function enemyTurn() {
+    if (!gameState || !gameState.gameActive) return;
+    
+    gameState.isPlayerTurn = false;
+    updateUI();
+    
+    restoreMainPaw();
+    showMessage("SNOWY'S TURN", 1200);
+    
+    setTimeout(() => {
+        snowy.src = "snowy_ready.png";
+        
+        setTimeout(() => {
+            const adjustedShootChance = config.enemyShootChance * gameState.difficultyMultiplier;
+            const willShoot = Math.random() < adjustedShootChance;
+            
+            if (willShoot) {
+                snowy.src = "snowy_holding_gun.png";
+                gameState.snowyShots++;
+                
+                setTimeout(() => {
+                    const adjustedHitChance = config.enemyHitChance * gameState.difficultyMultiplier;
+                    const willHit = Math.random() < adjustedHitChance;
+                    
+                    if (willHit) {
+                        // SHOOT LIVE
+                        snowy.src = "snowy_shoot_live.png";
+                        flashDamage();
+                        
+                        gameState.playerLives--;
+                        showMessage("SHOOT LIVE", 1200);
+                        
+                        setTimeout(() => {
+                            if (gameState.playerLives <= 0) {
+                                gameOver("snowy");
+                                return;
+                            }
+                            
+                            snowy.src = "snowy.png";
+                            nextAmmo();
+                            playerTurn();
+                        }, 1200);
+                    } else {
+                        // SHOOT BLANK
+                        snowy.src = "snowy_shoot_blank.png";
+                        showMessage("SHOOT BLANK", 1200);
+                        
+                        setTimeout(() => {
+                            snowy.src = "snowy.png";
+                            nextAmmo();
+                            playerTurn();
+                        }, 1200);
+                    }
+                    updateUI();
+                }, 800);
+            } else {
+                // SHOOT BLANK (пропуск хода)
+                snowy.src = "snowy_shoot_blank.png";
+                showMessage("SHOOT BLANK", 1200);
+                
+                setTimeout(() => {
+                    snowy.src = "snowy.png";
+                    playerTurn();
+                }, 1200);
+            }
+        }, 800);
+    }, 1200);
+}
+
+// Ход игрока
+function playerTurn() {
+    if (!gameState || !gameState.gameActive) return;
+    
+    gameState.isPlayerTurn = true;
+    gameState.round++;
+    
+    increaseDifficulty();
+    
+    updateUI();
+    restoreMainPaw();
+    
+    let riskMessage = "YOUR TURN!";
+    if (currentMode === 'hard') {
+        if (gameState.consecutiveBlanks >= 2) {
+            riskMessage = "HIGH RISK!";
+        } else if (gameState.liveAmmo > gameState.blankAmmo) {
+            riskMessage = "DANGEROUS!";
+        }
+    }
+    
+    showMessage(riskMessage, 1200);
+    showControls();
+}
+
+// Конец игры
+function gameOver(winner) {
+    if (!gameState) return;
+    
+    gameState.gameActive = false;
+    hideControls();
+    
+    if (winner === "player") {
+        gameTitle.textContent = "VICTORY!";
+        gameTitle.style.color = "#0f0";
+        gameResult.textContent = currentMode === 'hard' 
+            ? "YOU MASTERED HARDCORE!" 
+            : "YOU SURVIVED!";
+    } else {
+        gameTitle.textContent = "GAME OVER";
+        gameTitle.style.color = "#0f0";
+        gameResult.textContent = currentMode === 'hard'
+            ? "HARD MODE WINS!"
+            : "TRY AGAIN!";
+    }
+    
+    gameStats.innerHTML = `
+        MODE: ${currentMode.toUpperCase()}<br>
+        ROUNDS: ${gameState.round}<br>
+        SHOTS: ${gameState.playerShots}<br>
+        ENEMY SHOTS: ${gameState.snowyShots}<br>
+        DIFFICULTY: ${Math.round(gameState.difficultyMultiplier * 100)}%
+    `;
+    
+    gameOverScreen.style.display = 'flex';
+}
+
+// Вспомогательные функции
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// Перезапуск игры
+restartBtn.addEventListener('click', initGame);
+
+// Начало игры при загрузке
+window.addEventListener('load', () => {
+    initGame();
+    
+    // Заглушки для отсутствующих изображений
+    const allImages = [
+        paw, pawHolding, pawShooting, snowy,
+        ...Object.values(bgLayers),
+        ...Object.values(upperLayers)
+    ].filter(img => img);
+    
+    allImages.forEach(img => {
+        img.onerror = function() {
+            this.style.backgroundColor = '#000';
+            this.style.display = 'flex';
+            this.style.alignItems = 'center';
+            this.style.justifyContent = 'center';
+            this.style.color = '#0f0';
+            this.style.fontFamily = 'Press Start 2P, Courier New, monospace';
+            this.style.fontSize = '20px';
+            this.style.border = '2px solid #0f0';
+            this.style.imageRendering = 'pixelated';
+            
+            if (this.classList.contains('fullscreen-paw')) {
+                this.style.fontSize = '36px';
+                this.textContent = this.id.replace('paw-', '').toUpperCase();
+            } else if (this.classList.contains('bg-layer')) {
+                const lifeCount = this.id.replace('bg-layer-', '');
+                this.textContent = `BG LIVES: ${lifeCount}`;
+                this.style.background = lifeCount === '3' ? 'linear-gradient(45deg, #001100 0%, #003300 100%)' :
+                                      lifeCount === '2' ? 'linear-gradient(45deg, #330000 0%, #660000 100%)' :
+                                      lifeCount === '1' ? 'linear-gradient(45deg, #660000 0%, #990000 100%)' :
+                                                          'linear-gradient(45deg, #990000 0%, #cc0000 100%)';
+            } else if (this.classList.contains('upper-layer')) {
+                const lifeCount = this.id.replace('upper-layer-', '');
+                this.textContent = `BLOOD LAYER: ${lifeCount}`;
+                this.style.background = 'rgba(255, 0, 0, 0.3)';
+            } else {
+                this.textContent = this.id.toUpperCase();
+            }
+        };
+    });
+});
+
+// Добавляем пикселизацию для всех изображений
+document.addEventListener('DOMContentLoaded', function() {
+    const allImages = document.querySelectorAll('img');
+    allImages.forEach(img => {
+        img.style.imageRendering = 'pixelated';
+        img.style.imageRendering = 'crisp-edges';
+    });
+});
+</script>
+</body>
+</html>
